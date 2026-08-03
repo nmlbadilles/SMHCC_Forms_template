@@ -187,48 +187,6 @@ Notes for LXC:
 - IP: set a static IP in the Proxmox UI or use DHCP and find it with `pct exec 101 -- ip a`.
 - Backups: Use Proxmox scheduled backups or snapshots.
 
-Option B — Full VM (cloud-init) — good if you need full OS isolation
-
-- Summary: create a cloud-init-enabled VM and provide a user-data script to install nginx + git and clone the repo.
-
-1) Create a VM in the Proxmox UI or with qm and attach a cloud-init drive. Example (basic):
-
-```bash
-qm create 201 --name hotel-forms-vm --memory 512 --net0 virtio,bridge=vmbr0
-```
-
-(Then add a disk, install Debian/Ubuntu via ISO, and add a Cloud-Init drive in the UI.)
-
-2) Example cloud-init user-data (paste in the Proxmox Cloud-Init user-data field):
-
-```yaml
-#cloud-config
-package_update: true
-packages:
-  - nginx
-  - git
-runcmd:
-  - [ bash, -lc, "git clone https://github.com/nmlbadilles/SMHCC_Forms_template /var/www/hotel-it-forms" ]
-  - [ bash, -lc, "cp /var/www/hotel-it-forms/config.example.js /var/www/hotel-it-forms/config.js || true" ]
-  - [ bash, -lc, "chown -R www-data:www-data /var/www/hotel-it-forms" ]
-  - [ bash, -lc, "cat > /etc/nginx/sites-available/hotel-it-forms <<'EOF'\nserver {\n  listen 80;\n  server_name _;\n  root /var/www/hotel-it-forms;\n  index index.html;\n  location / { try_files $uri $uri/ =404; }\n}\nEOF" ]
-  - [ bash, -lc, "ln -sf /etc/nginx/sites-available/hotel-it-forms /etc/nginx/sites-enabled/hotel-it-forms" ]
-  - [ bash, -lc, "nginx -t && systemctl restart nginx" ]
-```
-
-3) Boot the VM — cloud-init will run the script and nginx will serve the site.
-
-TLS / Public domain (optional)
-
-- If you plan to expose this publicly, use a domain and Let's Encrypt:
-
-```bash
-apt install -y certbot python3-certbot-nginx
-certbot --nginx -d your.domain.example
-```
-
-- Or place a reverse proxy / load balancer (Traefik, HAProxy) on a public host.
-
 Networking notes
 
 - Assign a static IP on your vmbr bridge or use DHCP + DNS record.
@@ -250,7 +208,7 @@ Security & hardening quick tips
 
 ## 🛠️ Customising Further
 
-If you need to change form layouts, approval labels, or add new forms, edit `index.html` directly. All PDF generation logic is in the `<script>` block at the bottom of the file.
+If you need to change form layouts, approval labels, or add new forms, edit `index.html` directly. You may give the html code to any trust-worthy AI tools to add forms that you would like to work on. All PDF generation logic is in the `<script>` block at the bottom of the file.
 
 ---
 

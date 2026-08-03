@@ -94,9 +94,9 @@ For network/shared access, deploy to IIS, Nginx, Apache, Vercel, or Netlify.
 | `navTagline` | Small text shown in the top navigation bar | `"Mabuhay ug Madayaw!"` |
 | `logoBase64` | Hotel logo as Base64 string | `"data:image/png;base64,..."` |
 | `secondaryLogoBase64` | Chain/brand logo (Travel Auth PDF only) | `""` to hide |
-| `gmName` | General Manager's full name | `"Sven Toune"` |
-| `fcName` | Financial Controller's full name | `"Medilyn Mencias"` |
-| `hrDirectorName` | HR Director/Manager's full name | `"Natasha Mendoza"` |
+| `gmName` | General Manager's full name | `"Jason Derulo"` |
+| `fcName` | Financial Controller's full name | `"Justin Beiber"` |
+| `hrDirectorName` | HR Director/Manager's full name | `"Kendrick Lamar"` |
 | `docPrefix` | Prefix for document numbers | `"PIDV"` → `PIDV-SAF-001` |
 | `dpoEmail` | Data Protection Officer email | `"dpo@hotel.com"` |
 | `dpoPhone` | DPO contact number | `"+63 912 345 6789"` |

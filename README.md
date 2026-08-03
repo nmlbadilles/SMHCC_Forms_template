@@ -126,6 +126,128 @@ For IIS: copy all three files (`index.html`, `config.js`, `config.example.js`) i
 
 ---
 
+## 🖥️ Proxmox Deployment (optional)
+
+This repository is a static single-page app, so it runs well in a lightweight container or a small VM on Proxmox. Below are two recommended approaches with copy-pasteable commands and a cloud-init example.
+
+Option A — Recommended: Unprivileged LXC container (lightweight)
+
+- Summary: create a small Debian container, install nginx, clone the repo to /var/www/hotel-it-forms and serve it.
+
+1) Create the container (adjust IDs, storage and network to match your cluster):
+
+```bash
+pct create 101 local:vztmpl/debian-12-standard_12.3-1_amd64.tar.zst \
+  --hostname hotel-forms --cores 1 --memory 256 --net0 name=eth0,bridge=vmbr0,ip=dhcp \
+  --rootfs local-lvm:4 --unprivileged 1
+```
+
+2) Start container and enter its shell
+
+```bash
+pct start 101
+pct exec 101 -- bash
+```
+
+3) Inside the container: install nginx & git, clone the repo, and serve
+
+```bash
+apt update && apt install -y nginx git
+cd /var/www
+git clone https://github.com/nmlbadilles/SMHCC_Forms_template hotel-it-forms
+cp /var/www/hotel-it-forms/config.example.js /var/www/hotel-it-forms/config.js
+# edit /var/www/hotel-it-forms/config.js and set hotelName, logoBase64, etc.
+chown -R www-data:www-data /var/www/hotel-it-forms
+systemctl enable --now nginx
+```
+
+4) Minimal nginx site (optional): create `/etc/nginx/sites-available/hotel-it-forms`
+
+```nginx
+server {
+    listen 80;
+    server_name _;            # replace with domain or IP if you have one
+    root /var/www/hotel-it-forms;
+    index index.html;
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}
+```
+
+Enable and reload:
+
+```bash
+ln -s /etc/nginx/sites-available/hotel-it-forms /etc/nginx/sites-enabled/
+nginx -t && systemctl reload nginx
+```
+
+Notes for LXC:
+- Resources: 128–256 MB RAM, 1 vCPU, 4 GB disk is enough for this static app.
+- IP: set a static IP in the Proxmox UI or use DHCP and find it with `pct exec 101 -- ip a`.
+- Backups: Use Proxmox scheduled backups or snapshots.
+
+Option B — Full VM (cloud-init) — good if you need full OS isolation
+
+- Summary: create a cloud-init-enabled VM and provide a user-data script to install nginx + git and clone the repo.
+
+1) Create a VM in the Proxmox UI or with qm and attach a cloud-init drive. Example (basic):
+
+```bash
+qm create 201 --name hotel-forms-vm --memory 512 --net0 virtio,bridge=vmbr0
+```
+
+(Then add a disk, install Debian/Ubuntu via ISO, and add a Cloud-Init drive in the UI.)
+
+2) Example cloud-init user-data (paste in the Proxmox Cloud-Init user-data field):
+
+```yaml
+#cloud-config
+package_update: true
+packages:
+  - nginx
+  - git
+runcmd:
+  - [ bash, -lc, "git clone https://github.com/nmlbadilles/SMHCC_Forms_template /var/www/hotel-it-forms" ]
+  - [ bash, -lc, "cp /var/www/hotel-it-forms/config.example.js /var/www/hotel-it-forms/config.js || true" ]
+  - [ bash, -lc, "chown -R www-data:www-data /var/www/hotel-it-forms" ]
+  - [ bash, -lc, "cat > /etc/nginx/sites-available/hotel-it-forms <<'EOF'\nserver {\n  listen 80;\n  server_name _;\n  root /var/www/hotel-it-forms;\n  index index.html;\n  location / { try_files $uri $uri/ =404; }\n}\nEOF" ]
+  - [ bash, -lc, "ln -sf /etc/nginx/sites-available/hotel-it-forms /etc/nginx/sites-enabled/hotel-it-forms" ]
+  - [ bash, -lc, "nginx -t && systemctl restart nginx" ]
+```
+
+3) Boot the VM — cloud-init will run the script and nginx will serve the site.
+
+TLS / Public domain (optional)
+
+- If you plan to expose this publicly, use a domain and Let's Encrypt:
+
+```bash
+apt install -y certbot python3-certbot-nginx
+certbot --nginx -d your.domain.example
+```
+
+- Or place a reverse proxy / load balancer (Traefik, HAProxy) on a public host.
+
+Networking notes
+
+- Assign a static IP on your vmbr bridge or use DHCP + DNS record.
+- For internal-only access, a private IP and internal DNS is sufficient.
+- Forward ports 80/443 in your router/firewall if exposing externally.
+
+Backups & snapshots
+
+- Use Proxmox scheduled backups for VMs/LXCs (Datacenter → Storage → Backup schedule).
+- Snapshots (if supported) are useful before upgrades.
+
+Security & hardening quick tips
+
+- Keep the container/VM OS updated (`apt update && apt upgrade`).
+- Use a minimal firewall (ufw) to allow only 80/443 and SSH if needed.
+- If public, enable HTTPS and automatic certificate renewal.
+
+---
+
 ## 🛠️ Customising Further
 
 If you need to change form layouts, approval labels, or add new forms, edit `index.html` directly. All PDF generation logic is in the `<script>` block at the bottom of the file.

@@ -28,7 +28,7 @@ A self-contained, single-page web application for generating branded hotel HR an
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/your-org/hotel-it-forms.git
+git clone https://github.com/nmlbadilles/SMHCC_Forms_template.git
 cd hotel-it-forms
 ```
 
